@@ -1,6 +1,4 @@
 asgiref==3.10.0
-Django==5.2.7
-sqlparse==0.5.3
 attrs==25.3.0
 autobahn==24.4.2
 Automat==25.4.16
@@ -13,10 +11,12 @@ constantly==23.10.4
 cryptography==45.0.6
 daphne==4.2.1
 defusedxml==0.7.1
+Django==5.2.7
 django-bootstrap-icons==0.9.0
 django-cors-headers==4.7.0
 django-countries==7.6.1
 django-feather==0.3.0
+django-filter==25.2
 django-formset==2.1
 django-jazzmin==3.0.1
 django-phonenumber-field==8.1.0
@@ -32,6 +32,7 @@ jsonschema==4.25.1
 jsonschema-specifications==2025.9.1
 msgpack==1.1.1
 phonenumbers==9.0.12
+pillow==12.0.0
 psycopg2-binary==2.9.10
 pyasn1==0.6.1
 pyasn1_modules==0.4.2
@@ -40,12 +41,14 @@ PyJWT==2.10.1
 pyOpenSSL==25.1.0
 python-dotenv==1.1.1
 PyYAML==6.0.2
+qrcode==8.2
 redis==6.4.0
 referencing==0.36.2
 requests==2.32.4
 rpds-py==0.27.1
 service-identity==24.2.0
 setuptools==80.9.0
+sqlparse==0.5.3
 Twisted==25.5.0
 txaio==25.6.1
 typing_extensions==4.14.1
