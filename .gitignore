@@ -25,6 +25,10 @@ media/
 staticfiles/
 static/
 
+# 🚫 Ne pas suivre les migrations
+**/migrations/
+!**/migrations/__init__.py
+
 # --- Configuration et secrets ---
 .env
 *.env
