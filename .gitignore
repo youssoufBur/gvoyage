@@ -1,0 +1,76 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Environnement virtuel ---
+env/
+venv/
+ENV/
+.venv/
+env.bak/
+venv.bak/
+
+# --- Django ---
+*.log
+*.pot
+*.pyc
+*.pyo
+*.db
+*.sqlite3
+*.sqlite
+db.sqlite3
+local_settings.py
+media/
+staticfiles/
+static/
+
+# --- Configuration et secrets ---
+.env
+*.env
+.env.local
+.env.*.local
+
+# --- IDE / Éditeurs ---
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# --- OS / système ---
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# --- Tests ---
+.coverage
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+
+# --- PyInstaller ---
+*.manifest
+*.spec
+
+# --- MyPy / Pyre / Pyright ---
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+
+# --- Jupyter / IPython ---
+.ipynb_checkpoints
+profile_default/
+ipython_config.py
+
+# --- VSCode Django Extension ---
+.history/
+*.code-workspace
+
+# --- Docker ---
+*.pid
+docker-compose.override.yml
