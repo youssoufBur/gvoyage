@@ -16,7 +16,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ---------------------------------------------------------------------
 SECRET_KEY = 'django-insecure-xn(tl$t9@x5tfz_b^ee^zknirml7)#@j+wh!5rs80nv0%9rt=='
 DEBUG = True
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.mondomaine.com', 'cyberdev.pythonanywhere.com']
+# settings.py
+
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    '.mondomaine.com',
+    'gvoyage.pythonanywhere.com',
+    'localhost:4200',   # ✅ Angular (dev)
+    '127.0.0.1:4200',   # ✅ Angular (dev)
+]
+
 
 # ---------------------------------------------------------------------
 # 3. Base de données
@@ -62,7 +72,11 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
+# settings.py
+AUTHENTICATION_BACKENDS = [
+    'users.backends.PhoneBackend',  # Backend personnalisé pour le téléphone
+    'django.contrib.auth.backends.ModelBackend',  # Backend par défaut
+]
 # ---------------------------------------------------------------------
 # 6. Applications installées
 # ---------------------------------------------------------------------
@@ -197,7 +211,7 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,

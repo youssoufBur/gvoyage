@@ -33,7 +33,8 @@ class UserViewSet(viewsets.ModelViewSet):
     
     def get_permissions(self):
         if self.action == 'create':
-            permission_classes = [IsAuthenticatedAndVerified, CanManageUsers]
+            # Permettre la création sans authentification pour les clients
+            permission_classes = [permissions.AllowAny]
         elif self.action in ['update', 'partial_update', 'destroy']:
             permission_classes = [IsAuthenticatedAndVerified, IsAdminOrCanManageUser]
         elif self.action == 'list':
@@ -41,6 +42,18 @@ class UserViewSet(viewsets.ModelViewSet):
         else:
             permission_classes = [IsAuthenticatedAndVerified, IsOwnerOrAdmin]
         return [permission() for permission in permission_classes]
+    
+    def create(self, request, *args, **kwargs):
+        # Pour les créations non authentifiées, forcer le rôle client
+        if not request.user.is_authenticated:
+            request.data['role'] = 'client'
+        
+        # Si l'utilisateur est authentifié mais n'a pas les permissions pour gérer les users,
+        # il ne peut créer que des comptes clients
+        elif not (request.user.is_admin() or request.user.is_manager() or request.user.has_perm('users.can_manage_users')):
+            request.data['role'] = 'client'
+        
+        return super().create(request, *args, **kwargs)
     
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -106,7 +119,6 @@ class UserViewSet(viewsets.ModelViewSet):
             'temporary_password': temporary_password
         })
 
-    # users/views.py - Ajouter dans UserViewSet
     @action(detail=False, methods=['get'])
     def managed_users(self, request):
         """Utilisateurs gérés selon la hiérarchie"""
@@ -116,6 +128,7 @@ class UserViewSet(viewsets.ModelViewSet):
         users = User.objects.filter(agency__in=managed_agencies)
         serializer = UserSerializer(users, many=True)
         return Response(serializer.data)
+    
     
 
 class LoginView(APIView):

@@ -911,7 +911,7 @@ class SupportTicket(TimeStampedModel):
             SupportMessage.objects.create(
                 ticket=self,
                 user=user,
-                message=f"Ticket assigné à {agent.get_full_name()}",
+                message=f"Ticket assigné à {agent.full_name}",
                 message_type=SupportMessage.MessageType.SYSTEM,
                 is_system=True
             )
@@ -1131,7 +1131,7 @@ class SupportMessage(TimeStampedModel):
         if self.message_type == self.MessageType.CUSTOMER:
             # Notifier les agents
             title = f"Nouveau message - Ticket {self.ticket.ticket_id}"
-            message = f"Nouveau message de {self.user.get_full_name()}: {self.message[:100]}..."
+            message = f"Nouveau message de {self.user.full_name}: {self.message[:100]}..."
             
             # Notifier l'agent assigné ou tous les agents
             if self.ticket.assigned_to:
@@ -1157,7 +1157,7 @@ class SupportMessage(TimeStampedModel):
         elif self.message_type == self.MessageType.AGENT:
             # Notifier le client
             title = f"Réponse à votre ticket {self.ticket.ticket_id}"
-            message = f"{self.user.get_full_name()} a répondu: {self.message[:100]}..."
+            message = f"{self.user.full_name} a répondu: {self.message[:100]}..."
             
             Notification.objects.create(
                 user=self.ticket.user,

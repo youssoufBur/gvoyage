@@ -1,7 +1,7 @@
 # ==================================================
 # FICHIER: all_urls.py
 # DESCRIPTION: Tous les fichiers urls des applications Django
-# GÉNÉRÉ LE: Fri Oct 24 22:51:15 UTC 2025
+# GÉNÉRÉ LE: Tue Oct 28 14:01:53 UTC 2025
 # ==================================================
 
 

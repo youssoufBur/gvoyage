@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.db.models import Count, Sum, Avg 
 from .models import Route, Leg, Schedule, Vehicle, Trip, TripPassenger, TripEvent
 from .serializers import (
-    RouteSerializer, LegSerializer, ScheduleSerializer, VehicleSerializer,
+    LegScheduleSerializer, LegSearchSerializer, RouteSerializer, LegSerializer, ScheduleForLegSerializer, ScheduleSerializer, VehicleSerializer,
     TripSerializer, TripPassengerSerializer, TripEventSerializer, AvailableTripSerializer
 )
 from core.permissions import (
@@ -15,7 +15,10 @@ from core.permissions import (
     IsDriverOrAgencyStaff, IsCashierOrAgencyStaff, IsAgencyStaff,
     IsAgencyManager, IsChauffeur, IsOwnerOrAgencyStaff
 )
+# transport/views.py
+from rest_framework.views import APIView
 from locations.models import City
+from django_filters import rest_framework as django_filters
 
 from rest_framework import serializers
 from django.db import models
@@ -89,6 +92,7 @@ class RouteViewSet(viewsets.ModelViewSet):
             )
 
 
+# transport/views.py - Modifiez ScheduleViewSet
 class ScheduleViewSet(viewsets.ModelViewSet):
     queryset = Schedule.objects.filter(is_active=True)
     serializer_class = ScheduleSerializer
@@ -99,13 +103,18 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             permission_classes = [IsAuthenticatedAndVerified, IsAgencyManager]
         else:
-            permission_classes = [IsAuthenticatedAndVerified]
+            permission_classes = [IsAuthenticatedAndVerified]  # Lecture pour tous les authentifiés
         return [permission() for permission in permission_classes]
     
     def get_queryset(self):
         queryset = super().get_queryset()
         user = self.request.user
         
+        # LES CLIENTS VOIENT TOUS LES SCHEDULES ACTIFS
+        if user.is_client():
+            return queryset.select_related('leg', 'leg__origin', 'leg__destination', 'agency')
+        
+        # Les staff voient seulement les schedules de leurs agences
         if user.is_authenticated and not user.is_admin():
             managed_agencies = user.get_managed_agencies()
             queryset = queryset.filter(agency__in=managed_agencies)
@@ -114,7 +123,7 @@ class ScheduleViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['get'])
     def available_trips(self, request, pk=None):
-        """Voyages disponibles pour un horaire"""
+        """Voyages disponibles pour un horaire - Accessible aux clients"""
         schedule = self.get_object()
         date = request.GET.get('date', timezone.now().date())
         
@@ -135,17 +144,6 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         
         serializer = AvailableTripSerializer(available_trips, many=True)
         return Response(serializer.data)
-    
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticatedAndVerified, IsAgencyManager])
-    def toggle_active(self, request, pk=None):
-        """Activer/désactiver un horaire"""
-        schedule = self.get_object()
-        schedule.is_active = not schedule.is_active
-        schedule.save()
-        
-        status_msg = 'activé' if schedule.is_active else 'désactivé'
-        return Response({'status': f'Horaire {status_msg}'})
-
 
 # transport/views.py
 class VehicleViewSet(viewsets.ModelViewSet):
@@ -515,21 +513,68 @@ class TripEventViewSet(viewsets.ModelViewSet):
         
         return Response(stats)
 
+
+class LegFilter(django_filters.FilterSet):
+    origin_city = django_filters.CharFilter(field_name='origin__name', lookup_expr='icontains')
+    destination_city = django_filters.CharFilter(field_name='destination__name', lookup_expr='icontains')
+    
+    class Meta:
+        model = Leg
+        fields = ['route', 'origin', 'destination']
+
+# transport/views.py - Modifiez SEULEMENT LegViewSet
 class LegViewSet(viewsets.ReadOnlyModelViewSet):
-    """ViewSet pour les tronçons de route"""
-    queryset = Leg.objects.all()  # Retirer le filtre is_active qui n'existe pas
+    queryset = Leg.objects.all()
     serializer_class = LegSerializer
-    permission_classes = [IsAuthenticatedAndVerified]
+    permission_classes = [IsAuthenticatedAndVerified]  # Garder seulement l'authentification
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['route', 'origin_city', 'destination_city']  # Retirer is_active
+    filterset_fields = ['route', 'origin', 'destination']
     
     def get_queryset(self):
         queryset = super().get_queryset()
         user = self.request.user
         
+        # LES CLIENTS VOIENT TOUS LES LEGS
+        if user.is_client():
+            return queryset.select_related('origin', 'destination', 'origin__country', 'destination__country')
+        
+        # Les staff voient seulement les legs de leurs agences
         if user.is_authenticated and not user.is_admin():
             managed_agencies = user.get_managed_agencies()
             queryset = queryset.filter(route__agency__in=managed_agencies)
         
         return queryset
+    
+    @action(detail=False, methods=['get'])
+    def search(self, request):
+        """Recherche de trajets par villes - Accessible aux clients"""
+        origin_city = request.GET.get('origin_city')
+        destination_city = request.GET.get('destination_city')
+        origin_country = request.GET.get('origin_country')
+        destination_country = request.GET.get('destination_country')
+        
+        queryset = self.get_queryset()
+        
+        if origin_city:
+            queryset = queryset.filter(origin__name__icontains=origin_city)
+        if destination_city:
+            queryset = queryset.filter(destination__name__icontains=destination_city)
+        if origin_country:
+            queryset = queryset.filter(origin__country__name__icontains=origin_country)
+        if destination_country:
+            queryset = queryset.filter(destination__country__name__icontains=destination_country)
+        
+        serializer = LegSearchSerializer(queryset, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['get'])
+    def schedules(self, request, pk=None):
+        """Récupérer les horaires d'un trajet - Accessible aux clients"""
+        leg = self.get_object()
+        schedules = leg.schedules.filter(is_active=True)
+        serializer = ScheduleForLegSerializer(schedules, many=True)
+        return Response(serializer.data)
 
+class LegScheduleViewSet(viewsets.ModelViewSet):
+    queryset = Schedule.objects.all()
+    serializer_class = LegScheduleSerializer

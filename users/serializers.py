@@ -23,8 +23,9 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'date_joined', 'last_login']
 
 
+# users/serializers.py - UserCreateSerializer
 class UserCreateSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, required=False)
+    password = serializers.CharField(write_only=True, required=True, min_length=8)
     
     class Meta:
         model = User
@@ -32,12 +33,36 @@ class UserCreateSerializer(serializers.ModelSerializer):
             'phone', 'full_name', 'email', 'role', 'agency', 
             'password', 'gender', 'date_of_birth', 'address', 'city'
         ]
+        extra_kwargs = {
+            'role': {'required': False}  # Le rôle peut être automatique
+        }
+    
+    def validate(self, attrs):
+        # Pour les créations non authentifiées, forcer le rôle client
+        request = self.context.get('request')
+        if request and not request.user.is_authenticated:
+            attrs['role'] = 'client'
+        
+        # Valider que le numéro de téléphone est unique
+        phone = attrs.get('phone')
+        if phone and User.objects.filter(phone=phone).exists():
+            raise serializers.ValidationError({
+                'phone': _('Un utilisateur avec ce numéro de téléphone existe déjà.')
+            })
+        
+        return attrs
     
     def create(self, validated_data):
-        password = validated_data.pop('password', None)
+        password = validated_data.pop('password')
+        
+        # S'assurer que le rôle est client pour les inscriptions publiques
+        request = self.context.get('request')
+        if request and not request.user.is_authenticated:
+            validated_data['role'] = 'client'
+            validated_data['is_verified'] = True  # Les clients sont vérifiés automatiquement
+        
         user = User.objects.create_user(**validated_data, password=password)
         return user
-
 
 class UserUpdateSerializer(serializers.ModelSerializer):
     class Meta:

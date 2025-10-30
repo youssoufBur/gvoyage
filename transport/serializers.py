@@ -3,17 +3,36 @@ from rest_framework import serializers
 
 from .models import Route, Leg, Schedule, Vehicle, Trip, TripPassenger, TripEvent
 
+from django.utils import timezone
+from rest_framework import serializers
+from .models import Leg
+
 
 class LegSerializer(serializers.ModelSerializer):
     origin_name = serializers.CharField(source='origin.name', read_only=True)
     destination_name = serializers.CharField(source='destination.name', read_only=True)
-    
+    schedule_count = serializers.SerializerMethodField()  # ✅ à ajouter ici
+
     class Meta:
         model = Leg
         fields = [
-            'id', 'route', 'origin', 'origin_name', 'destination', 'destination_name',
-            'order', 'price', 'duration_minutes', 'created', 'updated'
+            'id',
+            'route',
+            'origin',
+            'origin_name',
+            'destination',
+            'destination_name',
+            'order',
+            'price',
+            'duration_minutes',
+            'created',
+            'updated',
+            'schedule_count',  # ✅ tu peux le laisser ici maintenant
         ]
+
+    def get_schedule_count(self, obj):
+        """Compte uniquement les horaires actifs liés à ce tronçon"""
+        return obj.schedules.filter(is_active=True).count()
 
 
 class RouteSerializer(serializers.ModelSerializer):
@@ -109,3 +128,69 @@ class AvailableTripSerializer(serializers.Serializer):
     vehicle_plate = serializers.CharField()
     driver_name = serializers.CharField()
     price = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+
+
+# transport/serializers.py
+class LegSearchSerializer(serializers.ModelSerializer):
+    origin_city = serializers.CharField(source='origin.name', read_only=True)
+    destination_city = serializers.CharField(source='destination.name', read_only=True)
+    origin_country = serializers.CharField(source='origin.country.name', read_only=True)
+    destination_country = serializers.CharField(source='destination.country.name', read_only=True)
+    origin_country_code = serializers.CharField(source='origin.country.code', read_only=True)
+    destination_country_code = serializers.CharField(source='destination.country.code', read_only=True)
+    total_duration = serializers.IntegerField(source='duration_minutes', read_only=True)
+    base_price = serializers.DecimalField(source='price', max_digits=10, decimal_places=2, read_only=True)
+    available_schedules_count = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Leg
+        fields = [
+            'id', 'origin_city', 'destination_city', 
+            'origin_country', 'destination_country',
+            'origin_country_code', 'destination_country_code',
+            'total_duration', 'base_price', 'available_schedules_count'
+        ]
+    
+    def get_available_schedules_count(self, obj):
+        return obj.schedules.filter(is_active=True).count()
+
+class ScheduleForLegSerializer(serializers.ModelSerializer):
+    departure_time = serializers.TimeField(format='%H:%M')
+    agency_name = serializers.CharField(source='agency.name', read_only=True)
+    days_of_week_display = serializers.SerializerMethodField()
+    is_available_today = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Schedule
+        fields = [
+            'id', 'departure_time', 'days_of_week', 'days_of_week_display',
+            'agency_name', 'is_active', 'is_available_today'
+        ]
+    
+    def get_days_of_week_display(self, obj):
+        day_mapping = {
+            'mon': 'Lundi', 'tue': 'Mardi', 'wed': 'Mercredi',
+            'thu': 'Jeudi', 'fri': 'Vendredi', 'sat': 'Samedi', 'sun': 'Dimanche'
+        }
+        if obj.days_of_week == 'daily':
+            return 'Tous les jours'
+        days = [day_mapping.get(day.strip(), day) for day in obj.days_of_week.split(',')]
+        return ', '.join(days)
+    
+    def get_is_available_today(self, obj):
+        
+        today = timezone.now().date()
+        day_mapping = {
+            'monday': 'mon', 'tuesday': 'tue', 'wednesday': 'wed',
+            'thursday': 'thu', 'friday': 'fri', 'saturday': 'sat', 'sunday': 'sun'
+        }
+        day_of_week = day_mapping[today.strftime('%A').lower()]
+        return obj.days_of_week == 'daily' or day_of_week in obj.days_of_week
+    
+
+
+class LegScheduleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Schedule
+        fields = '__all__'
